@@ -1,7 +1,9 @@
+import type { Eip1193Provider } from "ethers";
+
 export {};
 
 declare global {
   interface Window {
-    ethereum?: any;
+    ethereum?: Eip1193Provider;
   }
 }

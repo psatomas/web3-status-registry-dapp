@@ -1,0 +1,312 @@
+[1mdiff --git a/src/components/HashVerifier.tsx b/src/components/HashVerifier.tsx[m
+[1mindex 0c2a5ac..9e911fe 100644[m
+[1m--- a/src/components/HashVerifier.tsx[m
+[1m+++ b/src/components/HashVerifier.tsx[m
+[36m@@ -7,26 +7,38 @@[m [mexport default function HashVerifier() {[m
+   const [result, setResult] = useState<string>("");[m
+ [m
+   async function verify() {[m
+[31m-    if (!window.ethereum) return;[m
+[31m-[m
+[31m-    const provider = new ethers.BrowserProvider(window.ethereum);[m
+[31m-[m
+[31m-    const contract = new ethers.Contract([m
+[31m-      CONTRACT_ADDRESS,[m
+[31m-      ABI,[m
+[31m-      provider[m
+[31m-    );[m
+[31m-[m
+[31m-    const res = await contract.verifyHash(hash);[m
+[31m-[m
+[31m-    const valid = res[0];[m
+[31m-    const owner = res[1];[m
+[31m-[m
+[31m-    setResult([m
+[31m-      valid[m
+[31m-        ? `✔ Válido - Owner: ${owner}`[m
+[31m-        : "✖ Hash não encontrado"[m
+[31m-    );[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      if (!window.ethereum) throw new Error("MetaMask não encontrada");[m
+[32m+[m
+[32m+[m[32m      setResult("⏳ Verificando...");[m
+[32m+[m
+[32m+[m[32m      const provider = new ethers.BrowserProvider(window.ethereum);[m
+[32m+[m
+[32m+[m[32m      const contract = new ethers.Contract([m
+[32m+[m[32m        CONTRACT_ADDRESS,[m
+[32m+[m[32m        ABI,[m
+[32m+[m[32m        provider[m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      // convert string → bytes32 hash[m
+[32m+[m[32m      const bytes32Hash = ethers.keccak256([m
+[32m+[m[32m        ethers.toUtf8Bytes(hash)[m
+[32m+[m[32m      );[m
+[32m+[m
+[32m+[m[32m      const res = await contract.verifyHash(bytes32Hash);[m
+[32m+[m
+[32m+[m[32m      const valid: boolean = res[0];[m
+[32m+[m[32m      const owner: string = res[1];[m
+[32m+[m
+[32m+[m[32m      setResult([m
+[32m+[m[32m        valid[m
+[32m+[m[32m          ? `✔ Válido - Owner: ${owner}`[m
+[32m+[m[32m          : "❌ Hash não encontrado"[m
+[32m+[m[32m      );[m
+[32m+[m[32m    } catch (err: unknown) {[m
+[32m+[m[32m      const msg = err instanceof Error ? err.message : "Erro desconhecido";[m
+[32m+[m[32m      setResult(`❌ ${msg}`);[m
+[32m+[m[32m    }[m
+   }[m
+ [m
+   return ([m
+[36m@@ -36,12 +48,10 @@[m [mexport default function HashVerifier() {[m
+       <input[m
+         value={hash}[m
+         onChange={(e) => setHash(e.target.value)}[m
+[31m-        placeholder="0x..."[m
+[32m+[m[32m        placeholder="Texto do arquivo"[m
+       />[m
+ [m
+[31m-      <button onClick={verify}>[m
+[31m-        Verificar[m
+[31m-      </button>[m
+[32m+[m[32m      <button onClick={verify}>Verificar</button>[m
+ [m
+       <p>{result}</p>[m
+     </div>[m
+[1mdiff --git a/src/components/StatusForm.tsx b/src/components/StatusForm.tsx[m
+[1mindex 15b9830..d6f82bb 100644[m
+[1m--- a/src/components/StatusForm.tsx[m
+[1m+++ b/src/components/StatusForm.tsx[m
+[36m@@ -5,23 +5,43 @@[m [mimport { ABI, CONTRACT_ADDRESS } from "../contract";[m
+ export default function StatusForm() {[m
+   const [message, setMessage] = useState<string>("");[m
+ [m
+[32m+[m[32m  const [loading, setLoading] = useState(false);[m
+[32m+[m[32m  const [status, setStatus] = useState<string>("");[m
+[32m+[m[32m  const [error, setError] = useState<string>("");[m
+[32m+[m[32m  const [txHash, setTxHash] = useState<string>("");[m
+[32m+[m
+   async function sendStatus() {[m
+[31m-    if (!window.ethereum) return;[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      setLoading(true);[m
+[32m+[m[32m      setError("");[m
+[32m+[m[32m      setStatus("");[m
+[32m+[m
+[32m+[m[32m      if (!window.ethereum) throw new Error("MetaMask não encontrado");[m
+[32m+[m
+[32m+[m[32m      const provider = new ethers.BrowserProvider(window.ethereum);[m
+[32m+[m[32m      const signer = await provider.getSigner();[m
+ [m
+[31m-    const provider = new ethers.BrowserProvider(window.ethereum);[m
+[31m-    const signer = await provider.getSigner();[m
+[32m+[m[32m      const contract = new ethers.Contract([m
+[32m+[m[32m        CONTRACT_ADDRESS,[m
+[32m+[m[32m        ABI,[m
+[32m+[m[32m        signer[m
+[32m+[m[32m      );[m
+ [m
+[31m-    const contract = new ethers.Contract([m
+[31m-      CONTRACT_ADDRESS,[m
+[31m-      ABI,[m
+[31m-      signer[m
+[31m-    );[m
+[32m+[m[32m      const tx = await contract.updateStatus(message);[m
+ [m
+[31m-    const tx = await contract.updateStatus(message);[m
+[31m-    await tx.wait();[m
+[32m+[m[32m      setTxHash(tx.hash);[m
+[32m+[m[32m      setStatus("⏳ Transação enviada... aguardando confirmação");[m
+ [m
+[31m-    alert("Status registrado na blockchain!");[m
+[31m-    setMessage("");[m
+[32m+[m[32m      await tx.wait();[m
+[32m+[m
+[32m+[m[32m      setStatus("✔ Status registrado com sucesso!");[m
+[32m+[m[32m      setMessage("");[m
+[32m+[m[32m    } catch (err: unknown) {[m
+[32m+[m[32m      const msg = err instanceof Error ? err.message : "Erro na transação";[m
+[32m+[m[32m      setError(msg);[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setLoading(false);[m
+[32m+[m[32m    }[m
+   }[m
+ [m
+   return ([m
+[36m@@ -34,9 +54,13 @@[m [mexport default function StatusForm() {[m
+         placeholder="Ex: Produto enviado"[m
+       />[m
+ [m
+[31m-      <button onClick={sendStatus}>[m
+[31m-        Enviar[m
+[32m+[m[32m      <button onClick={sendStatus} disabled={loading}>[m
+[32m+[m[32m        {loading ? "Enviando..." : "Enviar"}[m
+       </button>[m
+[32m+[m
+[32m+[m[32m      {txHash && <p>Tx: {txHash}</p>}[m
+[32m+[m[32m      {status && <p>{status}</p>}[m
+[32m+[m[32m      {error && <p style={{ color: "red" }}>{error}</p>}[m
+     </div>[m
+   );[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/src/components/TokenTransfer.tsx b/src/components/TokenTransfer.tsx[m
+[1mindex 3248719..721437e 100644[m
+[1m--- a/src/components/TokenTransfer.tsx[m
+[1m+++ b/src/components/TokenTransfer.tsx[m
+[36m@@ -6,28 +6,67 @@[m [mexport default function TokenTransfer() {[m
+   const [to, setTo] = useState<string>("");[m
+   const [amount, setAmount] = useState<string>("");[m
+ [m
+[32m+[m[32m  const [loading, setLoading] = useState(false);[m
+[32m+[m[32m  const [status, setStatus] = useState<string>("");[m
+[32m+[m[32m  const [error, setError] = useState<string>("");[m
+[32m+[m[32m  const [txHash, setTxHash] = useState<string>("");[m
+[32m+[m
+   async function transfer() {[m
+[31m-    if (!window.ethereum) return;[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      setLoading(true);[m
+[32m+[m[32m      setError("");[m
+[32m+[m[32m      setStatus("");[m
+[32m+[m
+[32m+[m[32m      // 1. MetaMask check[m
+[32m+[m[32m      if (!window.ethereum) {[m
+[32m+[m[32m        throw new Error("MetaMask não encontrada");[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // 2. Validate address[m
+[32m+[m[32m      if (!ethers.isAddress(to)) {[m
+[32m+[m[32m        setError("❌ Endereço inválido");[m
+[32m+[m[32m        return;[m
+[32m+[m[32m      }[m
+[32m+[m
+[32m+[m[32m      // 3. Validate amount[m
+[32m+[m[32m      if (!amount || Number(amount) <= 0) {[m
+[32m+[m[32m        setError("❌ Quantidade inválida");[m
+[32m+[m[32m        return;[m
+[32m+[m[32m      }[m
+ [m
+[31m-    const provider = new ethers.BrowserProvider(window.ethereum);[m
+[31m-    const signer = await provider.getSigner();[m
+[32m+[m[32m      // 4. Provider (FIXED)[m
+[32m+[m[32m      const provider = new ethers.BrowserProvider(window.ethereum);[m
+[32m+[m[32m      const signer = await provider.getSigner();[m
+ [m
+[31m-    const contract = new ethers.Contract([m
+[31m-      CONTRACT_ADDRESS,[m
+[31m-      ABI,[m
+[31m-      signer[m
+[31m-    );[m
+[32m+[m[32m      // 5. Contract[m
+[32m+[m[32m      const contract = new ethers.Contract([m
+[32m+[m[32m        CONTRACT_ADDRESS,[m
+[32m+[m[32m        ABI,[m
+[32m+[m[32m        signer[m
+[32m+[m[32m      );[m
+ [m
+[31m-    const tx = await contract.transferTokens([m
+[31m-      to,[m
+[31m-      ethers.parseEther(amount)[m
+[31m-    );[m
+[32m+[m[32m      // 6. Transaction[m
+[32m+[m[32m      const tx = await contract.transferTokens([m
+[32m+[m[32m        to,[m
+[32m+[m[32m        ethers.parseEther(amount)[m
+[32m+[m[32m      );[m
+ [m
+[31m-    await tx.wait();[m
+[32m+[m[32m      setTxHash(tx.hash);[m
+[32m+[m[32m      setStatus("⏳ Transferência enviada... aguardando confirmação");[m
+ [m
+[31m-    alert("Tokens enviados!");[m
+[31m-    setTo("");[m
+[31m-    setAmount("");[m
+[32m+[m[32m      await tx.wait();[m
+[32m+[m
+[32m+[m[32m      setStatus("✔ Tokens enviados com sucesso!");[m
+[32m+[m[32m      setTo("");[m
+[32m+[m[32m      setAmount("");[m
+[32m+[m[32m    } catch (err: unknown) {[m
+[32m+[m[32m      const msg =[m
+[32m+[m[32m        err instanceof Error ? err.message : "Erro na transação";[m
+[32m+[m
+[32m+[m[32m      setError(`❌ ${msg}`);[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setLoading(false);[m
+[32m+[m[32m    }[m
+   }[m
+ [m
+   return ([m
+[36m@@ -37,18 +76,22 @@[m [mexport default function TokenTransfer() {[m
+       <input[m
+         value={to}[m
+         onChange={(e) => setTo(e.target.value)}[m
+[31m-        placeholder="Endereço destino"[m
+[32m+[m[32m        placeholder="Endereço destino (0x...)"[m
+       />[m
+ [m
+       <input[m
+         value={amount}[m
+         onChange={(e) => setAmount(e.target.value)}[m
+[31m-        placeholder="Quantidade"[m
+[32m+[m[32m        placeholder="Quantidade (ex: 1)"[m
+       />[m
+ [m
+[31m-      <button onClick={transfer}>[m
+[31m-        Enviar Tokens[m
+[32m+[m[32m      <button onClick={transfer} disabled={loading}>[m
+[32m+[m[32m        {loading ? "Enviando..." : "Enviar Tokens"}[m
+       </button>[m
+[32m+[m
+[32m+[m[32m      {txHash && <p>Tx: {txHash}</p>}[m
+[32m+[m[32m      {status && <p>{status}</p>}[m
+[32m+[m[32m      {error && <p style={{ color: "red" }}>{error}</p>}[m
+     </div>[m
+   );[m
+[31m-}[m
+\ No newline at end of file[m
+[32m+[m[32m}[m
+[1mdiff --git a/src/contract/index.ts b/src/contract/index.ts[m
+[1mindex b7e48c5..e162a70 100644[m
+[1m--- a/src/contract/index.ts[m
+[1m+++ b/src/contract/index.ts[m
+[36m@@ -1,4 +1,4 @@[m
+[31m-export const CONTRACT_ADDRESS = "COLE_SEU_ENDERECO_AQUI";[m
+[32m+[m[32mexport const CONTRACT_ADDRESS = "0x16425fe53429B4e0C045af461E12f93127697051";[m
+ [m
+ export const ABI = [[m
+   // Caso 1 - Status[m
+[1mdiff --git a/src/types/window.d.ts b/src/types/window.d.ts[m
+[1mindex 5f32135..2e20c8a 100644[m
+[1m--- a/src/types/window.d.ts[m
+[1m+++ b/src/types/window.d.ts[m
+[36m@@ -1,7 +1,9 @@[m
+[32m+[m[32mimport type { Eip1193Provider } from "ethers";[m
+[32m+[m
+ export {};[m
+ [m
+ declare global {[m
+   interface Window {[m
+[31m-    ethereum?: any;[m
+[32m+[m[32m    ethereum?: Eip1193Provider;[m
+   }[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/src/vite-env.d.ts b/src/vite-env.d.ts[m
+[1mdeleted file mode 100644[m
+[1mindex edae78e..0000000[m
+[1m--- a/src/vite-env.d.ts[m
+[1m+++ /dev/null[m
+[36m@@ -1,7 +0,0 @@[m
+[31m-import type { Eip1193Provider } from "ethers";[m
+[31m-[m
+[31m-declare global {[m
+[31m-  interface Window {[m
+[31m-    ethereum?: Eip1193Provider;[m
+[31m-  }[m
+[31m-}[m
+\ No newline at end of file[m

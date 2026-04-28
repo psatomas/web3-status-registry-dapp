@@ -1,4 +1,4 @@
-export const CONTRACT_ADDRESS = "COLE_SEU_ENDERECO_AQUI";
+export const CONTRACT_ADDRESS = "0x16425fe53429B4e0C045af461E12f93127697051";
 
 export const ABI = [
   // Caso 1 - Status

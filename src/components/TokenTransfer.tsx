@@ -6,28 +6,67 @@ export default function TokenTransfer() {
   const [to, setTo] = useState<string>("");
   const [amount, setAmount] = useState<string>("");
 
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [txHash, setTxHash] = useState<string>("");
+
   async function transfer() {
-    if (!window.ethereum) return;
+    try {
+      setLoading(true);
+      setError("");
+      setStatus("");
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
+      // 1. MetaMask check
+      if (!window.ethereum) {
+        throw new Error("MetaMask não encontrada");
+      }
 
-    const contract = new ethers.Contract(
-      CONTRACT_ADDRESS,
-      ABI,
-      signer
-    );
+      // 2. Validate address
+      if (!ethers.isAddress(to)) {
+        setError("❌ Endereço inválido");
+        return;
+      }
 
-    const tx = await contract.transferTokens(
-      to,
-      ethers.parseEther(amount)
-    );
+      // 3. Validate amount
+      if (!amount || Number(amount) <= 0) {
+        setError("❌ Quantidade inválida");
+        return;
+      }
 
-    await tx.wait();
+      // 4. Provider (FIXED)
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
 
-    alert("Tokens enviados!");
-    setTo("");
-    setAmount("");
+      // 5. Contract
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        ABI,
+        signer
+      );
+
+      // 6. Transaction
+      const tx = await contract.transferTokens(
+        to,
+        ethers.parseEther(amount)
+      );
+
+      setTxHash(tx.hash);
+      setStatus("⏳ Transferência enviada... aguardando confirmação");
+
+      await tx.wait();
+
+      setStatus("✔ Tokens enviados com sucesso!");
+      setTo("");
+      setAmount("");
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Erro na transação";
+
+      setError(`❌ ${msg}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -37,18 +76,22 @@ export default function TokenTransfer() {
       <input
         value={to}
         onChange={(e) => setTo(e.target.value)}
-        placeholder="Endereço destino"
+        placeholder="Endereço destino (0x...)"
       />
 
       <input
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Quantidade"
+        placeholder="Quantidade (ex: 1)"
       />
 
-      <button onClick={transfer}>
-        Enviar Tokens
+      <button onClick={transfer} disabled={loading}>
+        {loading ? "Enviando..." : "Enviar Tokens"}
       </button>
+
+      {txHash && <p>Tx: {txHash}</p>}
+      {status && <p>{status}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }

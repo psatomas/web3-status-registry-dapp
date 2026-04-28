@@ -5,23 +5,43 @@ import { ABI, CONTRACT_ADDRESS } from "../contract";
 export default function StatusForm() {
   const [message, setMessage] = useState<string>("");
 
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [txHash, setTxHash] = useState<string>("");
+
   async function sendStatus() {
-    if (!window.ethereum) return;
+    try {
+      setLoading(true);
+      setError("");
+      setStatus("");
 
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
+      if (!window.ethereum) throw new Error("MetaMask não encontrado");
 
-    const contract = new ethers.Contract(
-      CONTRACT_ADDRESS,
-      ABI,
-      signer
-    );
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
 
-    const tx = await contract.updateStatus(message);
-    await tx.wait();
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        ABI,
+        signer
+      );
 
-    alert("Status registrado na blockchain!");
-    setMessage("");
+      const tx = await contract.updateStatus(message);
+
+      setTxHash(tx.hash);
+      setStatus("⏳ Transação enviada... aguardando confirmação");
+
+      await tx.wait();
+
+      setStatus("✔ Status registrado com sucesso!");
+      setMessage("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro na transação";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -34,9 +54,13 @@ export default function StatusForm() {
         placeholder="Ex: Produto enviado"
       />
 
-      <button onClick={sendStatus}>
-        Enviar
+      <button onClick={sendStatus} disabled={loading}>
+        {loading ? "Enviando..." : "Enviar"}
       </button>
+
+      {txHash && <p>Tx: {txHash}</p>}
+      {status && <p>{status}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }
